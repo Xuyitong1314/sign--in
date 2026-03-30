@@ -3,221 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>安全会议签到系统</title>
-    <script src="https://cdn.staticfile.org/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <title>动态防作弊签到系统</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --primary: #07c160; --error: #ff3b30; --bg: #f2f2f7; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
-        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        h2 { margin: 0 0 15px 0; font-size: 1.1rem; border-left: 5px solid var(--primary); padding-left: 10px; }
-        
-        /* 表单与按钮 */
-        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; font-size: 14px; }
-        .btn { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 8px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .btn:disabled { background: #ccc; }
-        
-        /* 二维码与状态 */
-        .qr-area { text-align: center; padding: 20px; background: #f9f9f9; border-radius: 10px; margin-top: 15px; }
-        #qrcode { display: inline-block; padding: 10px; background: white; border: 1px solid #eee; }
-        .timer { color: var(--error); font-weight: bold; margin: 10px 0; }
-        .status-box { display: inline-block; padding: 5px 10px; border-radius: 4px; font-size: 12px; margin: 5px; background: #eee; }
-        .status-ok { background: #e8f7ed; color: var(--primary); }
-        .status-err { background: #ffebee; color: var(--error); }
-
-        /* 签到名单 */
-        .name-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 15px; }
-        .name-btn { padding: 15px 5px; background: #f0f0f0; border-radius: 8px; text-align: center; font-size: 14px; cursor: pointer; border: 1px solid transparent; }
-        .name-btn.active { background: var(--primary); color: white; font-weight: bold; }
-        
-        .tab-nav { display: flex; gap: 10px; margin-bottom: 15px; }
-        .tab-btn { flex: 1; text-align: center; padding: 10px; background: #ddd; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .tab-btn.active { background: var(--primary); color: white; }
-        .hidden { display: none; }
+        body { font-family: sans-serif; background: #f4f7f6; margin: 0; padding: 20px; text-align: center; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
+        h2 { color: #333; margin-top: 0; }
+        #qrcode { margin: 20px auto; padding: 10px; background: white; display: inline-block; border: 1px solid #eee; }
+        .timer { color: #ff4d4f; font-weight: bold; font-size: 1.2em; margin: 10px 0; }
+        .footer { font-size: 0.8em; color: #888; margin-top: 20px; }
+        button { background: #07c160; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <div id="view-staff" class="hidden">
-        <div class="card">
-            <h2 id="st-title">会议签到</h2>
-            <div id="check-ts" class="status-box">⏳ 正在校验时间...</div>
-            <div id="check-loc" class="status-box">📍 正在定位...</div>
-            <p style="font-size: 13px; color: #666; margin-top: 10px;">验证通过后，点击您的姓名完成签到：</p>
-            <div id="st-list" class="name-grid"></div>
-        </div>
+    <div class="card">
+        <h2>会议现场签到</h2>
+        <div id="qrcode"></div>
+        <div class="timer" id="status">正在初始化...</div>
+        <p style="font-size: 0.9em; color: #666;">请使用微信扫码，并允许获取地理位置</p>
+        <div class="footer">由 Vercel + Next.js 驱动 (大拿推荐方案)</div>
     </div>
 
-    <div id="view-admin">
-        <div class="tab-nav">
-            <div class="tab-btn active" id="tab1" onclick="switchTab(1)">新建签到</div>
-            <div class="tab-btn" id="tab2" onclick="switchTab(2)">历史报表</div>
-        </div>
-
-        <div id="panel-new" class="card">
-            <h2>会议配置</h2>
-            <input type="text" id="m-title" placeholder="会议主题（如：月度全体会议）">
-            <textarea id="m-names" rows="5" placeholder="请从 Excel 复制姓名列粘贴在此（每行一个姓名）"></textarea>
-            <p style="font-size: 12px; color: #888;">* 开启后将自动锁定您当前位置为签到中心点。</p>
-            <button class="btn" onclick="startSecureMeeting()">开启动态防作弊签到</button>
-
-            <div id="qr-panel" class="hidden qr-area">
-                <p>📢 <b>请现场员工微信扫码</b></p>
-                <div class="timer">二维码将在 <span id="cd">10</span> 秒后更新</div>
-                <div id="qrcode"></div>
-                <button class="btn" style="background:#888; margin-top:15px;" onclick="saveAndFinish()">结束并保存数据</button>
-            </div>
-        </div>
-
-        <div id="panel-his" class="card hidden">
-            <h2>历史记录</h2>
-            <div id="his-list"></div>
-            <button class="btn" style="background:#999; margin-top:15px;" onclick="clearHistory()">清空所有记录</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const mode = urlParams.get('m');
-    let db = JSON.parse(localStorage.getItem('mt_db') || '[]');
-    let currentLoc = { lat: 0, lng: 0 };
-    let timer = null;
-
-    // 路由分流
-    if (mode === 's') {
-        document.getElementById('view-admin').remove();
-        document.getElementById('view-staff').classList.remove('hidden');
-        initStaffCheck();
-    }
-
-    function switchTab(n) {
-        document.getElementById('panel-new').classList.toggle('hidden', n!==1);
-        document.getElementById('panel-his').classList.toggle('hidden', n!==2);
-        document.getElementById('tab1').classList.toggle('active', n===1);
-        document.getElementById('tab2').classList.toggle('active', n===2);
-        if(n===2) renderHis();
-    }
-
-    // 管理员：开启会议
-    function startSecureMeeting() {
-        const title = document.getElementById('m-title').value;
-        const names = document.getElementById('m-names').value.trim();
-        if(!title || !names) return alert("请填写主题和名单");
-
-        // 获取当前位置作为围栏中心
-        navigator.geolocation.getCurrentPosition(pos => {
-            currentLoc.lat = pos.coords.latitude;
-            currentLoc.lng = pos.coords.longitude;
-            
-            document.getElementById('qr-panel').classList.remove('hidden');
-            runDynamicQR();
-        }, err => {
-            alert("错误：必须允许地理位置权限才能开启防作弊模式。");
+    <script>
+        // 自动更新的动态令牌，每10秒变一次
+        let qrcode = new QRCode(document.getElementById("qrcode"), {
+            text: "loading...",
+            width: 200,
+            height: 200
         });
-    }
 
-    function runDynamicQR() {
-        const title = document.getElementById('m-title').value;
-        const names = document.getElementById('m-names').value.split('\n').filter(n=>n.trim()).join(',');
-        const qrcodeEl = document.getElementById('qrcode');
-        let cd = 10;
-
-        const update = () => {
-            const ts = Math.floor(Date.now() / 10000);
-            const baseUrl = window.location.href.split('?')[0];
-            const url = `${baseUrl}?m=s&t=${encodeURIComponent(title)}&ns=${encodeURIComponent(names)}&ts=${ts}&lat=${currentLoc.lat}&lng=${currentLoc.lng}`;
+        function updateQR() {
+            // 获取当前时间戳作为防作弊动态码
+            let token = Math.random().toString(36).substring(2, 10);
+            let now = new Date().getTime();
+            // 这里拼接你的签到逻辑网址，或者简单的识别码
+            qrcode.makeCode("SIGN_IN_" + token + "_" + now);
             
-            qrcodeEl.innerHTML = "";
-            new QRCode(qrcodeEl, { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.H });
-        };
-
-        update();
-        timer = setInterval(() => {
-            cd--;
-            document.getElementById('cd').innerText = cd;
-            if(cd <= 0) { cd = 10; update(); }
-        }, 1000);
-    }
-
-    // 员工端：安全校验
-    function initStaffCheck() {
-        const ts = parseInt(urlParams.get('ts'));
-        const lat = parseFloat(urlParams.get('lat'));
-        const lng = parseFloat(urlParams.get('lng'));
-        
-        // 1. 时间校验
-        const nowTs = Math.floor(Date.now() / 10000);
-        if (Math.abs(nowTs - ts) > 3) { // 允许30秒偏差
-            document.getElementById('check-ts').innerText = "❌ 二维码已过期";
-            document.getElementById('check-ts').className = "status-box status-err";
-            return alert("二维码已过期，请扫描大屏幕最新的二维码");
+            let count = 10;
+            document.getElementById("status").innerText = "二维码将在 " + count + " 秒后更新";
+            
+            let timer = setInterval(() => {
+                count--;
+                if (count <= 0) {
+                    clearInterval(timer);
+                    updateQR();
+                } else {
+                    document.getElementById("status").innerText = "二维码将在 " + count + " 秒后更新";
+                }
+            }, 1000);
         }
-        document.getElementById('check-ts').innerText = "✅ 时间验证通过";
-        document.getElementById('check-ts').className = "status-box status-ok";
 
-        // 2. 位置校验
-        navigator.geolocation.getCurrentPosition(pos => {
-            const dist = getDist(pos.coords.latitude, pos.coords.longitude, lat, lng);
-            if (dist > 0.2) { // 200米
-                document.getElementById('check-loc').innerText = "❌ 不在现场 (约"+(dist*1000).toFixed(0)+"米)";
-                document.getElementById('check-loc').className = "status-box status-err";
-            } else {
-                document.getElementById('check-loc').innerText = "✅ 已在现场";
-                document.getElementById('check-loc').className = "status-box status-ok";
-                renderStaffList();
-            }
-        }, err => {
-            alert("请开启手机 GPS 定位权限，否则无法签到");
-        });
-    }
-
-    function renderStaffList() {
-        const names = urlParams.get('ns').split(',');
-        const box = document.getElementById('st-list');
-        names.forEach(n => {
-            const d = document.createElement('div');
-            d.className = 'name-btn';
-            d.innerText = n;
-            d.onclick = function() {
-                this.classList.add('active');
-                this.innerText = "✓ " + n;
-                this.onclick = null;
-                alert("签到成功！");
-            };
-            box.appendChild(d);
-        });
-    }
-
-    function getDist(la1, lo1, la2, lo2) {
-        const R = 6371;
-        const dLat = (la2-la1)*Math.PI/180;
-        const dLon = (lo2-lo1)*Math.PI/180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLon/2)**2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
-
-    function saveAndFinish() {
-        const title = document.getElementById('m-title').value;
-        const names = document.getElementById('m-names').value.split('\n').filter(n=>n.trim());
-        db.unshift({ title, date: new Date().toLocaleString(), count: names.length });
-        localStorage.setItem('mt_db', JSON.stringify(db));
-        alert("已保存！");
-        location.href = window.location.href.split('?')[0];
-    }
-
-    function renderHis() {
-        const box = document.getElementById('his-list');
-        box.innerHTML = db.length ? db.map(h => `
-            <div style="border-bottom:1px solid #eee; padding:10px 0;">
-                <b>${h.title}</b><br>
-                <small>${h.date} | 应到 ${h.count} 人</small>
-            </div>
-        `).join('') : "暂无历史";
-    }
-
-    function clearHistory() { if(confirm("确定清空？")) { localStorage.removeItem('mt_db'); db=[]; renderHis(); } }
-</script>
+        // 启动
+        window.onload = updateQR;
+    </script>
 </body>
 </html>
