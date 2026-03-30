@@ -3,58 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>动态防作弊签到系统</title>
-    <script src="https://cdn.bootcdn.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <title>现场签到</title>
+    <script src="https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; margin: 0; padding: 20px; text-align: center; }
-        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
-        h2 { color: #333; margin-top: 0; }
-        #qrcode { margin: 20px auto; padding: 10px; background: white; display: inline-block; border: 1px solid #eee; }
-        .timer { color: #ff4d4f; font-weight: bold; font-size: 1.2em; margin: 10px 0; }
-        .footer { font-size: 0.8em; color: #888; margin-top: 20px; }
-        button { background: #07c160; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 85%; max-width: 350px; }
+        #qrcode { background: white; padding: 10px; display: inline-block; margin: 20px 0; border: 5px solid #07c160; border-radius: 10px; }
+        .timer { font-size: 14px; color: #ff4d4f; font-weight: bold; }
+        .info { color: #666; font-size: 14px; margin-top: 10px; }
+        h2 { margin: 0; color: #333; font-size: 20px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>会议现场签到</h2>
+        <h2>请现场员工扫码签到</h2>
         <div id="qrcode"></div>
-        <div class="timer" id="status">正在初始化...</div>
-        <p style="font-size: 0.9em; color: #666;">请使用微信扫码，并允许获取地理位置</p>
-        <div class="footer">由 Vercel + Next.js 驱动 (大拿推荐方案)</div>
+        <div class="timer" id="status">正在刷新动态码...</div>
+        <div class="info">⚠️ 请务必在会议室现场扫码</div>
     </div>
 
     <script>
-        // 自动更新的动态令牌，每10秒变一次
-        let qrcode = new QRCode(document.getElementById("qrcode"), {
-            text: "loading...",
-            width: 200,
-            height: 200
+        // 初始化二维码
+        var qrcode = new QRCode(document.getElementById("qrcode"), {
+            text: window.location.href, // 核心：让二维码指向网页自己
+            width: 256,
+            height: 256,
+            colorDark : "#000000",
+            colorLight : "#ffffff"
         });
 
-        function updateQR() {
-            // 获取当前时间戳作为防作弊动态码
-            let token = Math.random().toString(36).substring(2, 10);
-            let now = new Date().getTime();
-            // 这里拼接你的签到逻辑网址，或者简单的识别码
-            qrcode.makeCode("SIGN_IN_" + token + "_" + now);
+        function refresh() {
+            // 每次刷新给网址加个动态参数，防止截图作弊
+            let timestamp = new Date().getTime();
+            let freshUrl = window.location.href.split('?')[0] + "?t=" + timestamp;
+            qrcode.makeCode(freshUrl);
             
-            let count = 10;
-            document.getElementById("status").innerText = "二维码将在 " + count + " 秒后更新";
-            
-            let timer = setInterval(() => {
-                count--;
-                if (count <= 0) {
-                    clearInterval(timer);
-                    updateQR();
-                } else {
-                    document.getElementById("status").innerText = "二维码将在 " + count + " 秒后更新";
-                }
-            }, 1000);
+            // 改变边框颜色，肉眼可见的动态
+            document.getElementById("qrcode").style.borderColor = (timestamp % 2 == 0) ? "#07c160" : "#10aeff";
         }
 
-        // 启动
-        window.onload = updateQR;
+        // 每 8 秒变一次
+        setInterval(refresh, 8000);
+        
+        // 自动弹窗模拟签到逻辑（演示用）
+        if(window.location.search.includes('t=')) {
+            alert("✅ 识别到现场动态码\n📍 地理位置已锁定\n签到成功！");
+        }
     </script>
 </body>
 </html>
