@@ -1,54 +1,51 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>现场签到</title>
-    <script src="https://lf26-cdn-tos.bytecdntp.com/cdn/expire-1-M/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会议签到</title>
+    <script src="https://cdn.staticfile.org/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f0f2f5; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 85%; max-width: 350px; }
-        #qrcode { background: white; padding: 10px; display: inline-block; margin: 20px 0; border: 5px solid #07c160; border-radius: 10px; }
-        .timer { font-size: 14px; color: #ff4d4f; font-weight: bold; }
-        .info { color: #666; font-size: 14px; margin-top: 10px; }
-        h2 { margin: 0; color: #333; font-size: 20px; }
+        body { background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: system-ui; }
+        .box { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 80%; max-width: 320px; }
+        #qrcode { margin: 20px auto; display: block; }
+        #qrcode img { margin: 0 auto; }
+        .tips { color: #666; font-size: 14px; margin-top: 15px; }
+        .timer { color: #ff4d4f; font-weight: bold; margin: 10px 0; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>请现场员工扫码签到</h2>
+    <div class="box">
+        <h2 style="margin-bottom:10px">请现场员工扫码签到</h2>
         <div id="qrcode"></div>
-        <div class="timer" id="status">正在刷新动态码...</div>
-        <div class="info">⚠️ 请务必在会议室现场扫码</div>
+        <div class="timer" id="timer">正在生成动态码...</div>
+        <p class="tips">⚠️ 请务必在会议室现场扫码</p>
     </div>
 
     <script>
         // 初始化二维码
         var qrcode = new QRCode(document.getElementById("qrcode"), {
-            text: window.location.href, // 核心：让二维码指向网页自己
-            width: 256,
-            height: 256,
-            colorDark : "#000000",
-            colorLight : "#ffffff"
+            width: 200, height: 200, colorDark : "#000000", colorLight : "#ffffff"
         });
 
         function refresh() {
-            // 每次刷新给网址加个动态参数，防止截图作弊
-            let timestamp = new Date().getTime();
-            let freshUrl = window.location.href.split('?')[0] + "?t=" + timestamp;
-            qrcode.makeCode(freshUrl);
+            // 纯本地生成随机码，不需要过墙，不卡顿
+            var randomToken = Math.random().toString(36).slice(2);
+            qrcode.makeCode("https://your-checkin-logic.com?t=" + randomToken);
             
-            // 改变边框颜色，肉眼可见的动态
-            document.getElementById("qrcode").style.borderColor = (timestamp % 2 == 0) ? "#07c160" : "#10aeff";
+            var sec = 10;
+            var countdown = setInterval(function() {
+                sec--;
+                document.getElementById("timer").innerText = "二维码将在 " + sec + " 秒后更新";
+                if (sec <= 0) {
+                    clearInterval(countdown);
+                    refresh();
+                }
+            }, 1000);
         }
-
-        // 每 8 秒变一次
-        setInterval(refresh, 8000);
         
-        // 自动弹窗模拟签到逻辑（演示用）
-        if(window.location.search.includes('t=')) {
-            alert("✅ 识别到现场动态码\n📍 地理位置已锁定\n签到成功！");
-        }
+        // 只要页面一加载，立刻出码
+        window.onload = refresh;
     </script>
 </body>
 </html>
